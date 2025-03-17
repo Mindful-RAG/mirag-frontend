@@ -7,10 +7,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import DemoTanstackQuery from './routes/demo.tanstack-query'
 
-import Header from './components/Header'
 
 import TanstackQueryLayout from './integrations/tanstack-query/layout'
 
@@ -20,28 +17,53 @@ import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
 
 import App from './App.tsx'
+import RootDocument from './components/root-document.tsx'
+import AboutPage from './routes/about.tsx'
 
-const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Header />
-      <Outlet />
-      <TanStackRouterDevtools />
-
-      <TanstackQueryLayout />
-    </>
-  ),
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      {
+        charSet: 'utf-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      {
+        title: 'TanStack Start Starter',
+      },
+    ],
+  }),
+  component: RootComponent,
 })
 
+function RootComponent() {
+  return (
+    <RootDocument>
+      <Outlet />
+      {/* <TanStackRouterDevtools /> */}
+      <TanstackQueryLayout />
+    </RootDocument>
+  )
+}
+
+
+
 const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => Route,
   path: '/',
   component: App,
 })
+const aboutRoute = createRoute({
+  getParentRoute: () => Route,
+  path: '/about',
+  component: AboutPage,
+})
 
-const routeTree = rootRoute.addChildren([
+const routeTree = Route.addChildren([
   indexRoute,
-  DemoTanstackQuery(rootRoute),
+  aboutRoute
 ])
 
 const router = createRouter({

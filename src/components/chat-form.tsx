@@ -1,0 +1,163 @@
+import React, { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils"
+import { AutoResizeTextarea } from "@/components/autoresize-textarea"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { ArrowUpIcon } from "lucide-react"
+
+type Message = {
+  id: string;
+  content: string;
+  role: "user" | "assistant";
+  markdown?: string;
+  status?: string;
+};
+
+export function Chat({ className, ...props }: React.ComponentProps<"form">) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState<"ready" | "initializing" | "error">("initializing");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>)
+    }
+  }
+  const header = (
+    <header className="m-auto flex max-w-96 flex-col gap-5 text-center">
+      <h1 className="text-2xl font-semibold leading-none tracking-tight">Mindful RAG (MiRAG)</h1>
+      <p className="text-muted-foreground text-sm">
+        MiRAG is a retrieval-augmented generation system that uses a mindful approach to improve the quality of retrieved information.
+      </p>
+      <p className="text-muted-foreground text-sm">
+        This is still under development. Results may vary.
+      </p>
+    </header>
+  )
+  const messageList = (
+    <div className="my-4 flex h-fit min-h-full flex-col gap-4">
+      {messages.map((message, index) => (
+        <div
+          key={index}
+          data-role={message.role}
+          className="max-w-[80%] rounded-xl px-3 py-2 text-sm data-[role=assistant]:self-start data-[role=user]:self-end data-[role=assistant]:bg-gray-100 data-[role=user]:bg-blue-500 data-[role=assistant]:text-black data-[role=user]:text-white"
+        >
+          {message.content}
+        </div>
+      ))}
+    </div>
+  )
+  useEffect(() => {
+    // Check API health on mount
+    const checkHealth = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/health");
+        const data = await response.json();
+        if (data.status === "ready") {
+          setApiStatus("ready");
+        } else {
+          setTimeout(checkHealth, 3000); // Retry after 3 seconds
+        }
+      } catch (error) {
+        console.error("API health check failed:", error);
+        setApiStatus("error");
+        setTimeout(checkHealth, 5000); // Retry after 5 seconds
+      }
+    };
+
+    checkHealth();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.trim() === "" || isLoading || apiStatus !== "ready") return;
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: input,
+      role: "user",
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+
+    // Focus the input after sending
+    inputRef.current?.focus();
+
+    try {
+      const response = await fetch("http://localhost:8000/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: input }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        content: data.long_answer,
+        role: "assistant",
+        markdown: data.markdown,
+        status: data.status
+      };
+
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Error querying API:", error);
+
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: "Sorry, I encountered an error while processing your request. Please try again later.",
+        role: "assistant",
+        status: "error"
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Status badge based on message status
+
+  return (
+    <main
+      className={cn(
+        "ring-none mx-auto flex h-svh max-h-svh w-full max-w-[35rem] flex-col items-stretch border-none",
+        className,
+      )}
+      {...props}
+    >
+      <div className="flex-1 content-center overflow-y-auto px-6">{messages.length ? messageList : header}</div>
+      <div className="p-4 border-t">
+        <form
+          onSubmit={handleSubmit}
+          className="border-input bg-background focus-within:ring-ring/10 relative mx-6 mb-6 flex items-center rounded-[16px] border px-3 py-1.5 pr-8 text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-0"
+        >
+          <AutoResizeTextarea
+            onKeyDown={handleKeyDown}
+            onChange={(v) => setInput(v)}
+            value={input}
+            placeholder="Enter a message"
+            className="placeholder:text-muted-foreground flex-1 bg-transparent focus:outline-none"
+          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="absolute bottom-1 right-1 size-6 rounded-full">
+                <ArrowUpIcon size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent sideOffset={12}>Submit</TooltipContent>
+          </Tooltip>
+        </form>
+      </div>
+    </main>
+  )
+}
