@@ -50,7 +50,7 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href={`http://localhost:8000/login`} >
+                  <a href={`${import.meta.env.VITE_API_URL}/login`} >
                     <Info />
                     <span>Login</span>
                   </a>
@@ -58,7 +58,7 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href={`http://localhost:8000/logout`} >
+                  <a href={`${import.meta.env.VITE_API_URL}/logout`} >
                     <Info />
                     <span>Logout</span>
                   </a>

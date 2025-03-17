@@ -9,7 +9,7 @@ export default function RootDocument({ children }: Readonly<{ children: ReactNod
     // Check API health on mount
     const checkHealth = async () => {
       try {
-        const response = await fetch("http://localhost:8000/health");
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/health`);
         const data = await response.json();
         if (data.status === "ready") {
           setApiStatus("ready");
