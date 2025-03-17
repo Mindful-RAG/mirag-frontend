@@ -1,8 +1,6 @@
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar"
-import { API_URL } from "@/lib/constants"
-import { Link } from "@tanstack/react-router"
-import { AlertTriangle, Info, MessageSquare, MessagesSquare } from "lucide-react"
-import { useEffect } from "react";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, Info, MessageSquare, MessagesSquare } from "lucide-react";
 
 export function AppSidebar() {
   return (
