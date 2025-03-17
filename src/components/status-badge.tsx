@@ -2,9 +2,9 @@ export default function StatusBadge({ status }: { status?: string }) {
   if (!status) return null;
 
   const statusMap: Record<string, { color: string, label: string }> = {
-    ready: { color: "text-green-600 bg-green-50", label: "ready" },
+    ready: { color: "text-green-600 bg-green-50", label: "online" },
     initializing: { color: "text-yellow-600 bg-yellow-50", label: "initializing" },
-    error: { color: "text-red-600 bg-red-50", label: "error" }
+    error: { color: "text-red-600 bg-red-50", label: "offline" }
   };
 
   const { color, label } = statusMap[status] || { color: "text-gray-600 bg-gray-100", label: status };

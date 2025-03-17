@@ -1,6 +1,8 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar"
+import { API_URL } from "@/lib/constants"
 import { Link } from "@tanstack/react-router"
 import { AlertTriangle, Info, MessageSquare, MessagesSquare } from "lucide-react"
+import { useEffect } from "react";
 
 export function AppSidebar() {
   return (
@@ -46,6 +48,22 @@ export function AppSidebar() {
                     <Info />
                     <span>About</span>
                   </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href={`http://localhost:8000/login`} >
+                    <Info />
+                    <span>Login</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href={`http://localhost:8000/logout`} >
+                    <Info />
+                    <span>Logout</span>
+                  </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

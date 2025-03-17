@@ -53,7 +53,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     // Check API health on mount
     const checkHealth = async () => {
       try {
-        const response = await fetch("http://localhost:8000/health");
+        const response = await fetch(`${process.env.API_URL}/health`);
         const data = await response.json();
         if (data.status === "ready") {
           setApiStatus("ready");
@@ -88,7 +88,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     inputRef.current?.focus();
 
     try {
-      const response = await fetch("http://localhost:8000/query", {
+      const response = await fetch(`${process.env.API_URL}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: input }),
