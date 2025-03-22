@@ -1,30 +1,28 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils"
 import { AutoResizeTextarea } from "@/components/autoresize-textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowUpIcon } from "lucide-react"
+import { useChat, useHealth } from "@/hooks/chat";
+import type { Message } from "@/lib/types"
 
-type Message = {
-  id: string;
-  content: string;
-  role: "user" | "assistant";
-  markdown?: string;
-  status?: string;
-};
 
 export function Chat({ className, ...props }: React.ComponentProps<"form">) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiStatus, setApiStatus] = useState<"ready" | "initializing" | "error">("initializing");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: health } = useHealth();
+  const chat = useChat();
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>)
     }
   }
+
   const header = (
     <header className="m-auto flex max-w-96 flex-col gap-5 text-center">
       <h1 className="text-2xl font-semibold leading-none tracking-tight">Mindful RAG (MiRAG)</h1>
@@ -44,35 +42,16 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
           data-role={message.role}
           className="max-w-[80%] rounded-xl px-3 py-2 text-sm data-[role=assistant]:self-start data-[role=user]:self-end data-[role=assistant]:bg-gray-100 data-[role=user]:bg-blue-500 data-[role=assistant]:text-black data-[role=user]:text-white"
         >
-          {message.content}
+          <div>{message.content}</div>
+          {/* {message.content} */}
         </div>
       ))}
     </div>
   )
-  useEffect(() => {
-    // Check API health on mount
-    const checkHealth = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/health`);
-        const data = await response.json();
-        if (data.status === "ready") {
-          setApiStatus("ready");
-        } else {
-          setTimeout(checkHealth, 3000); // Retry after 3 seconds
-        }
-      } catch (error) {
-        console.error("API health check failed:", error);
-        setApiStatus("error");
-        setTimeout(checkHealth, 5000); // Retry after 5 seconds
-      }
-    };
-
-    checkHealth();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() === "" || isLoading || apiStatus !== "ready") return;
+    if (input.trim() === "" || chat.isPending || health.status !== "ready") return;
 
     // Add user message
     const userMessage: Message = {
@@ -82,50 +61,36 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setIsLoading(true);
 
     // Focus the input after sending
     inputRef.current?.focus();
 
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: input }),
-      });
+    chat.mutate({ query: input }, {
+      onSuccess: (data) => {
+        const botMessage: Message = {
+          id: Date.now().toString(),
+          content: data.long_answer,
+          role: "assistant",
+          markdown: data.markdown,
+          status: data.status
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      },
+      onError: () => {
+        // Add error message
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          content: "Sorry, I encountered an error while processing your request. Please try again later.",
+          role: "assistant",
+          status: "error"
+        };
 
-      if (!response.ok) {
-        throw new Error(`API responded with status: ${response.status}`);
+        setMessages((prev) => [...prev, errorMessage]);
       }
+    })
 
-      const data = await response.json();
-
-      const botMessage: Message = {
-        id: Date.now().toString(),
-        content: data.long_answer,
-        role: "assistant",
-        markdown: data.markdown,
-        status: data.status
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error("Error querying API:", error);
-
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        content: "Sorry, I encountered an error while processing your request. Please try again later.",
-        role: "assistant",
-        status: "error"
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
-  // Status badge based on message status
 
   return (
     <main
