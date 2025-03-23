@@ -2,29 +2,32 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar"
 import { AppSidebar } from "./app-sidebar"
 import StatusBadge from './status-badge';
+import { useHealth } from '@/hooks/chat';
 export default function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
-  const [apiStatus, setApiStatus] = useState<"ready" | "initializing" | "error">("initializing");
+  // const [apiStatus, setApiStatus] = useState<"ready" | "initializing" | "error">("initializing");
 
-  useEffect(() => {
-    // Check API health on mount
-    const checkHealth = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/health`);
-        const data = await response.json();
-        if (data.status === "ready") {
-          setApiStatus("ready");
-        } else {
-          setTimeout(checkHealth, 3000); // Retry after 3 seconds
-        }
-      } catch (error) {
-        console.error("API health check failed:", error);
-        setApiStatus("error");
-        setTimeout(checkHealth, 5000); // Retry after 5 seconds
-      }
-    };
+  const health = useHealth()
 
-    checkHealth();
-  }, []);
+  // useEffect(() => {
+  //   // Check API health on mount
+  //   const checkHealth = async () => {
+  //     try {
+  //       const response = await fetch(`${import.meta.env.VITE_API_URL}/health`);
+  //       const data = await response.json();
+  //       if (data.status === "ready") {
+  //         setApiStatus("ready");
+  //       } else {
+  //         setTimeout(checkHealth, 3000); // Retry after 3 seconds
+  //       }
+  //     } catch (error) {
+  //       console.error("API health check failed:", error);
+  //       setApiStatus("error");
+  //       setTimeout(checkHealth, 5000); // Retry after 5 seconds
+  //     }
+  //   };
+
+  //   checkHealth();
+  // }, []);
   return (
 
     <SidebarProvider className="w-auto">
@@ -43,7 +46,7 @@ export default function RootDocument({ children }: Readonly<{ children: ReactNod
                   </div>
                   <div>
                     <StatusBadge status="gpt-4o-mini" />
-                    <StatusBadge status={apiStatus} />
+                    <StatusBadge status={health.data.status} />
                   </div>
                 </div>
               </header>

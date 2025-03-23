@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { AutoResizeTextarea } from "@/components/autoresize-textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowUpIcon } from "lucide-react"
-import { useChat, useHealth } from "@/hooks/chat";
+import { useChat, useHealth, useLongRAGChat } from "@/hooks/chat";
 import type { Message } from "@/lib/types"
 
 
@@ -15,6 +15,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
 
   const { data: health } = useHealth();
   const chat = useChat();
+  const longrag = useLongRAGChat();
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -40,18 +41,24 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
         <div
           key={index}
           data-role={message.role}
-          className="max-w-[80%] rounded-xl px-3 py-2 text-sm data-[role=assistant]:self-start data-[role=user]:self-end data-[role=assistant]:bg-gray-100 data-[role=user]:bg-blue-500 data-[role=assistant]:text-black data-[role=user]:text-white"
+          data-type={message.type}
+          className="max-w-[80%] rounded-xl px-3 py-2 text-sm data-[type=mirag]:bg-purple-300 data-[role=assistant]:self-start data-[role=user]:self-end data-[type=longrag]:bg-pink-300 data-[role=user]:bg-blue-500 data-[role=assistant]:text-black data-[role=user]:text-white"
         >
-          <div>{message.content}</div>
-          {/* {message.content} */}
+          <div>
+            <div className="font-bold">{message.type}</div>
+            <div>{message.content}</div>
+          </div>
         </div>
       ))}
     </div>
+
+
   )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() === "" || chat.isPending || health.status !== "ready") return;
+    // if (input.trim() === "" || chat.isPending || health.status !== "ready") return;
+    if (input.trim() === "" || chat.isPending) return;
 
     // Add user message
     const userMessage: Message = {
@@ -72,7 +79,33 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
           content: data.long_answer,
           role: "assistant",
           markdown: data.markdown,
-          status: data.status
+          status: data.status,
+          type: "mirag"
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      },
+      onError: () => {
+        // Add error message
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          content: "Sorry, I encountered an error while processing your request. Please try again later.",
+          role: "assistant",
+          status: "error"
+        };
+
+        setMessages((prev) => [...prev, errorMessage]);
+      }
+    })
+
+    longrag.mutate({ query: input }, {
+      onSuccess: (data) => {
+        const botMessage: Message = {
+          id: Date.now().toString(),
+          content: data.long_answer,
+          role: "assistant",
+          markdown: data.markdown,
+          status: data.status,
+          type: "longrag"
         };
         setMessages((prev) => [...prev, botMessage]);
       },

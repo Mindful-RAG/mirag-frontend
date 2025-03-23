@@ -4,6 +4,7 @@ export type Message = {
   role: "user" | "assistant";
   markdown?: string;
   status?: string;
+  type?: string;
 };
 
 export type Query = {
