@@ -2,16 +2,16 @@ import { API_URL } from "@/lib/constants";
 import type { Health, Query } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const useHealth = () => {
+export const useHealth = (): { data: Health } => {
   const queryClient = useQueryClient();
   return useQuery({
     queryKey: ["health"],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/health`)
-        .then((res) => res.json())
-        .then((data) => data as Health);
-
-      return response;
+    queryFn: async (): Promise<Health> => {
+      const response = await fetch(`${API_URL}/health`);
+      if (!response.ok) {
+        throw new Error("Failed to query API");
+      }
+      return response.json();
     },
     initialData: () => {
       const state = queryClient.getQueryState(["health"]);
@@ -23,12 +23,13 @@ export const useHealth = () => {
       return {
         status: "error",
         message: "Cannot get to server",
-      } as Health;
+      };
     },
+    refetchInterval: 10 * 1000,
   });
 };
 
-export const useChat = () => {
+export const useMiRAGChat = () => {
   return useMutation({
     mutationFn: async (input: { query: string }) => {
       const response = await fetch(`${API_URL}/chat/mirag`, {
