@@ -37,12 +37,12 @@ export const useMiRAGChat = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ...input, session_id: "1234" }),
+        body: JSON.stringify({ ...input, session_id: "1233" }),
       });
       if (!response.ok) {
         throw new Error("Failed to query API");
       }
-      return (await response.json()) as Query;
+      return response;
     },
   });
 };
@@ -50,7 +50,7 @@ export const useMiRAGChat = () => {
 export const useLongRAGChat = () => {
   return useMutation({
     mutationFn: async ({ query }: { query: string }) => {
-      const res = await fetch(`${API_URL}/chat/longrag`, {
+      const response = await fetch(`${API_URL}/chat/longrag`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -59,11 +59,11 @@ export const useLongRAGChat = () => {
         }),
       });
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error("Failed to query API");
       }
 
-      return res;
+      return response;
     },
   });
 };

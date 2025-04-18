@@ -19,6 +19,8 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [progress, setProgress] = useState("");
+
   const mirag = useMiRAGChat();
 
   useEffect(() => {
@@ -84,7 +86,75 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     mirag.mutateAsync(
       { query: userInput },
       {
-        onSuccess: (data) => {
+        onSuccess: async (res) => {
+          const reader = res.body?.getReader();
+          const decoder = new TextDecoder("utf-8");
+
+          if (!reader) {
+            setConversations(prev =>
+              prev.map(conv =>
+                conv.id === newConversationId
+                  ? {
+                    ...conv,
+                    responses: conv.responses.map(resp =>
+                      resp.type === "mirag"
+                        ? {
+                          ...resp,
+                          content: "Error: No streaming data available",
+                          isStreaming: false
+                        }
+                        : resp
+                    )
+                  }
+                  : conv
+              )
+            );
+            return;
+          }
+
+          let accumContent = "";
+          let isDone = false;
+
+          while (!isDone) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            for (const line of chunk.split('\n')) {
+              if (!line.trim()) continue;
+              if (line === '[DONE]') {
+                isDone = true;
+                break;
+              }
+
+              try {
+                console.log("Line:", line);
+                const parsed = JSON.parse(line);
+                setProgress(parsed.progress);
+
+                accumContent += parsed.token || "";
+
+                setConversations(prev =>
+                  prev.map(conv =>
+                    conv.id === newConversationId
+                      ? {
+                        ...conv,
+                        responses: conv.responses.map(resp =>
+                          resp.type === "mirag"
+                            ? { ...resp, content: accumContent }
+                            : resp
+                        )
+                      }
+                      : conv
+                  )
+                );
+              } catch (e) {
+                console.error("Failed to parse streaming data:", e);
+              }
+            }
+          }
+
+          // Mark streaming as complete
           setConversations(prev =>
             prev.map(conv =>
               conv.id === newConversationId
@@ -92,7 +162,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                   ...conv,
                   responses: conv.responses.map(resp =>
                     resp.type === "mirag"
-                      ? { ...resp, content: data.long_answer, isStreaming: false }
+                      ? { ...resp, isStreaming: false }
                       : resp
                   )
                 }
@@ -255,13 +325,11 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
               <div className="flex md:flex-row flex-col w-full max-w justify-center gap-4">
                 {/* MiRAG Response */}
                 <div className="flex-1 rounded-xl bg-purple-100 p-4 text-sm">
-                  <div className="font-bold text-black">MiRAG</div>
+                  <div className="font-bold text-black">MiRAG <span className="text-sm font-thin">{conversation.responses.find(r => r.type === "mirag")?.isStreaming && progress}</span></div>
                   <div>
-                    {conversation.responses.find(r => r.type === "mirag")?.content || (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Thinking...</span>
-                      </div>
+                    {conversation.responses.find(r => r.type === "mirag")?.content}
+                    {conversation.responses.find(r => r.type === "mirag")?.isStreaming && (
+                      <span className="animate-pulse">▌</span>
                     )}
                   </div>
                 </div>
