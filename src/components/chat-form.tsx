@@ -5,7 +5,9 @@ import { AutoResizeTextarea } from "@/components/autoresize-textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowUpIcon, Loader2 } from "lucide-react"
 import { useLongRAGChat, useMiRAGChat } from "@/hooks/chat";
+import { v4 as uuidv4 } from 'uuid';
 import type { Message } from "@/lib/types"
+
 
 interface Conversation {
   id: string;
@@ -19,9 +21,16 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [sessionId, setSessionId] = useState<string>("");
+
   const [progress, setProgress] = useState("");
 
   const mirag = useMiRAGChat();
+  const longrag = useLongRAGChat();
+
+  useEffect(() => {
+    setSessionId(uuidv4())
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -34,7 +43,6 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     }
   }
 
-  const longrag = useLongRAGChat();
 
   const isLoading = mirag.isPending || longrag.isPending;
 
@@ -84,7 +92,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
 
     // Process MiRAG response
     mirag.mutateAsync(
-      { query: userInput },
+      { query: userInput, session_id: sessionId },
       {
         onSuccess: async (res) => {
           const reader = res.body?.getReader();
@@ -195,7 +203,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
 
     // Process LongRAG streaming response
     longrag.mutateAsync(
-      { query: userInput },
+      { query: userInput, session_id: sessionId },
       {
         onSuccess: async (res) => {
           const reader = res.body?.getReader();
