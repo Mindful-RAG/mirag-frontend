@@ -31,36 +31,51 @@ export const useHealth = (): { data: Health } => {
 
 export const useMiRAGChat = () => {
   return useMutation({
-    mutationFn: async (input: { query: string }) => {
+    mutationFn: async ({
+      query,
+      session_id,
+    }: {
+      query: string;
+      session_id: string;
+    }) => {
       const response = await fetch(`${API_URL}/chat/mirag`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify({ query, session_id }),
       });
       if (!response.ok) {
         throw new Error("Failed to query API");
       }
-      return (await response.json()) as Query;
+      return response;
     },
   });
 };
 
 export const useLongRAGChat = () => {
   return useMutation({
-    mutationFn: async (input: { query: string }) => {
+    mutationFn: async ({
+      query,
+      session_id,
+    }: {
+      query: string;
+      session_id: string;
+    }) => {
       const response = await fetch(`${API_URL}/chat/longrag`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          session_id,
+        }),
       });
+
       if (!response.ok) {
         throw new Error("Failed to query API");
       }
-      return (await response.json()) as Query;
+
+      return response;
     },
   });
 };

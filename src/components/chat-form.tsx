@@ -4,8 +4,10 @@ import { cn } from "@/lib/utils"
 import { AutoResizeTextarea } from "@/components/autoresize-textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowUpIcon, Loader2 } from "lucide-react"
-import { useMiRAGChat, useLongRAGChat } from "@/hooks/chat";
+import { useLongRAGChat, useMiRAGChat } from "@/hooks/chat";
+import { v4 as uuidv4 } from 'uuid';
 import type { Message } from "@/lib/types"
+
 
 interface Conversation {
   id: string;
@@ -18,10 +20,17 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [sessionId, setSessionId] = useState<string>("");
+
+  const [progress, setProgress] = useState("");
+
   const mirag = useMiRAGChat();
   const longrag = useLongRAGChat();
 
-  const isLoading = mirag.isPending || longrag.isPending;
+  useEffect(() => {
+    setSessionId(uuidv4())
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,6 +42,9 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
       handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>)
     }
   }
+
+
+  const isLoading = mirag.isPending || longrag.isPending;
 
   const header = (
     <header className="m-auto flex max-w-96 flex-col gap-5 text-center">
@@ -48,115 +60,256 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() === "" || mirag.isPending) return;
+    if (input.trim() === "" || isLoading) return;
 
+    // Create a new conversation
+    const newConversationId = Date.now().toString();
     const newConversation: Conversation = {
-      id: Date.now().toString(),
+      id: newConversationId,
       question: input,
-      responses: [],
+      responses: [
+        {
+          id: `mirag-${Date.now()}`,
+          content: "",
+          role: "assistant",
+          type: "mirag",
+          isStreaming: true
+        },
+        {
+          id: `longrag-${Date.now()}`,
+          content: "",
+          role: "assistant",
+          type: "longrag",
+          isStreaming: true
+        }
+      ],
     };
 
-    setConversations((prev) => [...prev, newConversation]);
+    setConversations(prev => [...prev, newConversation]);
+    const userInput = input;
     setInput("");
-
     inputRef.current?.focus();
 
-    // Handle chat response
-    mirag.mutate(
-      { query: input },
+    // Process MiRAG response
+    mirag.mutateAsync(
+      { query: userInput, session_id: sessionId },
       {
-        onSuccess: (data) => {
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === newConversation.id
-                ? {
-                  ...conv,
-                  responses: [
-                    ...conv.responses,
-                    {
-                      id: Date.now().toString(),
-                      content: data.long_answer,
-                      role: "assistant",
-                      type: "mirag",
-                    },
-                  ],
-                }
-                : conv
-            )
-          );
-        },
+        onSuccess: async (res) => {
+          const reader = res.body?.getReader();
+          const decoder = new TextDecoder("utf-8");
 
-        onError: () => {
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === newConversation.id
+          if (!reader) {
+            setConversations(prev =>
+              prev.map(conv =>
+                conv.id === newConversationId
+                  ? {
+                    ...conv,
+                    responses: conv.responses.map(resp =>
+                      resp.type === "mirag"
+                        ? {
+                          ...resp,
+                          content: "Error: No streaming data available",
+                          isStreaming: false
+                        }
+                        : resp
+                    )
+                  }
+                  : conv
+              )
+            );
+            return;
+          }
+
+          let accumContent = "";
+          let isDone = false;
+
+          while (!isDone) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            for (const line of chunk.split('\n')) {
+              if (!line.trim()) continue;
+              if (line === '[DONE]') {
+                isDone = true;
+                break;
+              }
+
+              try {
+                console.log("Line:", line);
+                const parsed = JSON.parse(line);
+                setProgress(parsed.progress);
+
+                accumContent += parsed.token || "";
+
+                setConversations(prev =>
+                  prev.map(conv =>
+                    conv.id === newConversationId
+                      ? {
+                        ...conv,
+                        responses: conv.responses.map(resp =>
+                          resp.type === "mirag"
+                            ? { ...resp, content: accumContent }
+                            : resp
+                        )
+                      }
+                      : conv
+                  )
+                );
+              } catch (e) {
+                console.error("Failed to parse streaming data:", e);
+              }
+            }
+          }
+
+          // Mark streaming as complete
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.id === newConversationId
                 ? {
                   ...conv,
-                  responses: [
-                    ...conv.responses,
-                    {
-                      id: Date.now().toString(),
-                      content: "Error: No response received. Please try again.",
-                      role: "assistant",
-                      type: "mirag",
-                    },
-                  ],
+                  responses: conv.responses.map(resp =>
+                    resp.type === "mirag"
+                      ? { ...resp, isStreaming: false }
+                      : resp
+                  )
                 }
                 : conv
             )
           );
         },
+        onError: () => {
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.id === newConversationId
+                ? {
+                  ...conv,
+                  responses: conv.responses.map(resp =>
+                    resp.type === "mirag"
+                      ? {
+                        ...resp,
+                        content: "Error: No response received. Please try again.",
+                        isStreaming: false
+                      }
+                      : resp
+                  )
+                }
+                : conv
+            )
+          );
+        }
       }
     );
 
-    // Handle longrag response
-    longrag.mutate(
-      { query: input },
+    // Process LongRAG streaming response
+    longrag.mutateAsync(
+      { query: userInput, session_id: sessionId },
       {
-        onSuccess: (data) => {
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === newConversation.id
-                ? {
-                  ...conv,
-                  responses: [
-                    ...conv.responses,
-                    {
-                      id: Date.now().toString(),
-                      content: data.long_answer,
-                      role: "assistant",
-                      type: "longrag",
-                    },
-                  ],
-                }
-                : conv
-            )
-          );
-        },
+        onSuccess: async (res) => {
+          const reader = res.body?.getReader();
+          const decoder = new TextDecoder("utf-8");
 
-        onError: () => {
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === newConversation.id
+          if (!reader) {
+            setConversations(prev =>
+              prev.map(conv =>
+                conv.id === newConversationId
+                  ? {
+                    ...conv,
+                    responses: conv.responses.map(resp =>
+                      resp.type === "longrag"
+                        ? {
+                          ...resp,
+                          content: "Error: No streaming data available",
+                          isStreaming: false
+                        }
+                        : resp
+                    )
+                  }
+                  : conv
+              )
+            );
+            return;
+          }
+
+          let accumContent = "";
+          let isDone = false;
+
+          while (!isDone) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            for (const line of chunk.split('\n')) {
+              if (!line.trim()) continue;
+              if (line === '[DONE]') {
+                isDone = true;
+                break;
+              }
+
+              try {
+                const parsed = JSON.parse(line);
+                accumContent += parsed.token || "";
+
+                setConversations(prev =>
+                  prev.map(conv =>
+                    conv.id === newConversationId
+                      ? {
+                        ...conv,
+                        responses: conv.responses.map(resp =>
+                          resp.type === "longrag"
+                            ? { ...resp, content: accumContent }
+                            : resp
+                        )
+                      }
+                      : conv
+                  )
+                );
+              } catch (e) {
+                console.error("Failed to parse streaming data:", e);
+              }
+            }
+          }
+
+          // Mark streaming as complete
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.id === newConversationId
                 ? {
                   ...conv,
-                  responses: [
-                    ...conv.responses,
-                    {
-                      id: Date.now().toString(),
-                      content: "Error: No response received. Please try again.",
-                      role: "assistant",
-                      type: "longrag",
-                    },
-                  ],
+                  responses: conv.responses.map(resp =>
+                    resp.type === "longrag"
+                      ? { ...resp, isStreaming: false }
+                      : resp
+                  )
                 }
                 : conv
             )
           );
         },
+        onError: () => {
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.id === newConversationId
+                ? {
+                  ...conv,
+                  responses: conv.responses.map(resp =>
+                    resp.type === "longrag"
+                      ? {
+                        ...resp,
+                        content: "Error: No response received. Please try again.",
+                        isStreaming: false
+                      }
+                      : resp
+                  )
+                }
+                : conv
+            )
+          );
+        }
       }
     );
   };
+
   return (
     <main
       className={cn(
@@ -167,8 +320,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     >
       {conversations.length === 0 ? (
         <div className="flex-1 content-center overflow-y-auto px-6">{header}</div>
-      )
-        :
+      ) : (
         <div className="flex-1 content-start overflow-y-auto px-6">
           {conversations.map((conversation) => (
             <div key={conversation.id} className="my-6 flex flex-col items-end gap-4">
@@ -179,49 +331,34 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
 
               {/* Responses Side by Side */}
               <div className="flex md:flex-row flex-col w-full max-w justify-center gap-4">
+                {/* MiRAG Response */}
+                <div className="flex-1 rounded-xl bg-purple-100 p-4 text-sm">
+                  <div className="font-bold text-black">MiRAG <span className="text-sm font-thin">{conversation.responses.find(r => r.type === "mirag")?.isStreaming && progress}</span></div>
+                  <div>
+                    {conversation.responses.find(r => r.type === "mirag")?.content}
+                    {conversation.responses.find(r => r.type === "mirag")?.isStreaming && (
+                      <span className="animate-pulse">▌</span>
+                    )}
+                  </div>
+                </div>
 
-                {conversation.responses.find((m) => m.type === "mirag") && (
-                  <div className="flex-1 rounded-xl bg-purple-100 p-4 text-sm">
-                    <div className="font-bold text-black">Mirag</div>
-                    <div>{conversation.responses.find((m) => m.type === "mirag")?.content}</div>
+                {/* LongRAG Response */}
+                <div className="flex-1 rounded-xl bg-pink-100 p-4 text-sm">
+                  <div className="font-bold text-black">LongRAG</div>
+                  <div>
+                    {conversation.responses.find(r => r.type === "longrag")?.content}
+                    {conversation.responses.find(r => r.type === "longrag")?.isStreaming && (
+                      <span className="animate-pulse">▌</span>
+                    )}
                   </div>
-                )}
-                {conversation.responses.find((m) => m.type === "longrag") && (
-                  <div className="flex-1 rounded-xl bg-pink-100 p-4 text-sm">
-                    <div className="font-bold text-black">Longrag</div>
-                    <div>{conversation.responses.find((m) => m.type === "longrag")?.content}</div>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           ))}
 
-          {isLoading && (
-            <div className="flex flex-row justify-center gap-4 pb-4">
-              {mirag.isPending && (
-                <div className="max-w-[40%] rounded-xl px-3 py-2 text-sm bg-purple-100 text-black flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <div>
-                    <div className="font-bold">mirag</div>
-                    <div>Thinking...</div>
-                  </div>
-                </div>
-              )}
-
-              {longrag.isPending && (
-                <div className="max-w-[40%] rounded-xl px-3 py-2 text-sm bg-pink-100 text-black flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <div>
-                    <div className="font-bold">longrag</div>
-                    <div>Thinking...</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
           <div ref={messagesEndRef} />
         </div>
-      }
+      )}
 
       {/* Input Box */}
       <div className="p-4 border-t">
@@ -235,11 +372,21 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
             value={input}
             placeholder="Enter a message"
             className="placeholder:text-muted-foreground flex-1 bg-transparent focus:outline-none"
+            disabled={isLoading}
           />
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="absolute bottom-1 right-1 size-6 rounded-full">
-                <ArrowUpIcon size={16} />
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isLoading || input.trim() === ""}
+                className="absolute bottom-1 right-1 size-6 rounded-full"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowUpIcon size={16} />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent sideOffset={12}>Submit</TooltipContent>

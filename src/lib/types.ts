@@ -5,6 +5,7 @@ export type Message = {
   markdown?: string;
   status?: string;
   type?: string;
+  isStreaming?: boolean;
 };
 
 export type Query = {
