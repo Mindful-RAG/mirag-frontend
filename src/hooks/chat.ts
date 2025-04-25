@@ -1,5 +1,5 @@
 import { API_URL } from "@/lib/constants";
-import type { Health, Query } from "@/lib/types";
+import type { Health } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useHealth = (): { data: Health } => {
