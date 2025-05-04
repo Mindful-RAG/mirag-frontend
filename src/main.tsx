@@ -19,6 +19,7 @@ import reportWebVitals from './reportWebVitals.ts'
 import App from './App.tsx'
 import RootDocument from './components/root-document.tsx'
 import AboutPage from './routes/about.tsx'
+import MiragPage from './routes/mirag.tsx'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -60,10 +61,16 @@ const aboutRoute = createRoute({
   path: '/about',
   component: AboutPage,
 })
+const miragRoute = createRoute({
+  getParentRoute: () => Route,
+  path: '/mirag',
+  component: MiragPage,
+})
 
 const routeTree = Route.addChildren([
   indexRoute,
-  aboutRoute
+  aboutRoute,
+  miragRoute
 ])
 
 const router = createRouter({
