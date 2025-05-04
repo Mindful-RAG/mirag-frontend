@@ -321,7 +321,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
   return (
     <main
       className={cn(
-        "ring-none mx-auto flex h-svh max-h-svh w-full max-w-full flex-col items-stretch border-none",
+        "ring-none mx-auto flex h-svh max-h-svh w-full max-w-full flex-col items-stretch border-none overflow-y-auto",
         className,
       )}
       {...props}
