@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AutoResizeTextarea } from "@/components/autoresize-textarea";
@@ -108,17 +109,17 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
               prev.map((conv) =>
                 conv.id === newConversationId
                   ? {
-                      ...conv,
-                      responses: conv.responses.map((resp) =>
-                        resp.type === "mirag"
-                          ? {
-                              ...resp,
-                              content: "Error: No streaming data available",
-                              isStreaming: false,
-                            }
-                          : resp,
-                      ),
-                    }
+                    ...conv,
+                    responses: conv.responses.map((resp) =>
+                      resp.type === "mirag"
+                        ? {
+                          ...resp,
+                          content: "Error: No streaming data available",
+                          isStreaming: false,
+                        }
+                        : resp,
+                    ),
+                  }
                   : conv,
               ),
             );
@@ -151,13 +152,13 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                   prev.map((conv) =>
                     conv.id === newConversationId
                       ? {
-                          ...conv,
-                          responses: conv.responses.map((resp) =>
-                            resp.type === "mirag"
-                              ? { ...resp, content: accumContent }
-                              : resp,
-                          ),
-                        }
+                        ...conv,
+                        responses: conv.responses.map((resp) =>
+                          resp.type === "mirag"
+                            ? { ...resp, content: accumContent }
+                            : resp,
+                        ),
+                      }
                       : conv,
                   ),
                 );
@@ -172,13 +173,13 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
             prev.map((conv) =>
               conv.id === newConversationId
                 ? {
-                    ...conv,
-                    responses: conv.responses.map((resp) =>
-                      resp.type === "mirag"
-                        ? { ...resp, isStreaming: false }
-                        : resp,
-                    ),
-                  }
+                  ...conv,
+                  responses: conv.responses.map((resp) =>
+                    resp.type === "mirag"
+                      ? { ...resp, isStreaming: false }
+                      : resp,
+                  ),
+                }
                 : conv,
             ),
           );
@@ -188,18 +189,18 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
             prev.map((conv) =>
               conv.id === newConversationId
                 ? {
-                    ...conv,
-                    responses: conv.responses.map((resp) =>
-                      resp.type === "mirag"
-                        ? {
-                            ...resp,
-                            content:
-                              "Error: No response received. Please try again.",
-                            isStreaming: false,
-                          }
-                        : resp,
-                    ),
-                  }
+                  ...conv,
+                  responses: conv.responses.map((resp) =>
+                    resp.type === "mirag"
+                      ? {
+                        ...resp,
+                        content:
+                          "Error: No response received. Please try again.",
+                        isStreaming: false,
+                      }
+                      : resp,
+                  ),
+                }
                 : conv,
             ),
           );
@@ -220,17 +221,17 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
               prev.map((conv) =>
                 conv.id === newConversationId
                   ? {
-                      ...conv,
-                      responses: conv.responses.map((resp) =>
-                        resp.type === "longrag"
-                          ? {
-                              ...resp,
-                              content: "Error: No streaming data available",
-                              isStreaming: false,
-                            }
-                          : resp,
-                      ),
-                    }
+                    ...conv,
+                    responses: conv.responses.map((resp) =>
+                      resp.type === "longrag"
+                        ? {
+                          ...resp,
+                          content: "Error: No streaming data available",
+                          isStreaming: false,
+                        }
+                        : resp,
+                    ),
+                  }
                   : conv,
               ),
             );
@@ -260,13 +261,13 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                   prev.map((conv) =>
                     conv.id === newConversationId
                       ? {
-                          ...conv,
-                          responses: conv.responses.map((resp) =>
-                            resp.type === "longrag"
-                              ? { ...resp, content: accumContent }
-                              : resp,
-                          ),
-                        }
+                        ...conv,
+                        responses: conv.responses.map((resp) =>
+                          resp.type === "longrag"
+                            ? { ...resp, content: accumContent }
+                            : resp,
+                        ),
+                      }
                       : conv,
                   ),
                 );
@@ -281,13 +282,13 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
             prev.map((conv) =>
               conv.id === newConversationId
                 ? {
-                    ...conv,
-                    responses: conv.responses.map((resp) =>
-                      resp.type === "longrag"
-                        ? { ...resp, isStreaming: false }
-                        : resp,
-                    ),
-                  }
+                  ...conv,
+                  responses: conv.responses.map((resp) =>
+                    resp.type === "longrag"
+                      ? { ...resp, isStreaming: false }
+                      : resp,
+                  ),
+                }
                 : conv,
             ),
           );
@@ -297,18 +298,18 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
             prev.map((conv) =>
               conv.id === newConversationId
                 ? {
-                    ...conv,
-                    responses: conv.responses.map((resp) =>
-                      resp.type === "longrag"
-                        ? {
-                            ...resp,
-                            content:
-                              "Error: No response received. Please try again.",
-                            isStreaming: false,
-                          }
-                        : resp,
-                    ),
-                  }
+                  ...conv,
+                  responses: conv.responses.map((resp) =>
+                    resp.type === "longrag"
+                      ? {
+                        ...resp,
+                        content:
+                          "Error: No response received. Please try again.",
+                        isStreaming: false,
+                      }
+                      : resp,
+                  ),
+                }
                 : conv,
             ),
           );
@@ -320,7 +321,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
   return (
     <main
       className={cn(
-        "ring-none mx-auto flex h-svh max-h-svh w-full max-w-[35rem] flex-col items-stretch border-none",
+        "ring-none mx-auto flex h-svh max-h-svh w-full max-w-full flex-col items-stretch border-none",
         className,
       )}
       {...props}
@@ -352,11 +353,13 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                         ?.isStreaming && progress}
                     </span>
                   </div>
-                  <div>
-                    {
-                      conversation.responses.find((r) => r.type === "mirag")
-                        ?.content
-                    }
+                  <div className="prose">
+                    <ReactMarkdown>
+                      {
+                        conversation.responses.find((r) => r.type === "mirag")
+                          ?.content
+                      }
+                    </ReactMarkdown>
                     {conversation.responses.find((r) => r.type === "mirag")
                       ?.isStreaming && <span className="animate-pulse">▌</span>}
                   </div>
@@ -371,11 +374,13 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                         ?.isStreaming && progress}
                     </span>
                   </div>
-                  <div>
-                    {
-                      conversation.responses.find((r) => r.type === "longrag")
-                        ?.content
-                    }
+                  <div className="prose">
+                    <ReactMarkdown>
+                      {
+                        conversation.responses.find((r) => r.type === "longrag")
+                          ?.content
+                      }
+                    </ReactMarkdown>
                     {conversation.responses.find((r) => r.type === "longrag")
                       ?.isStreaming && <span className="animate-pulse">▌</span>}
                   </div>
