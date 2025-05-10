@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { ArrowUpIcon, Loader2 } from "lucide-react";
 import { useLongRAGChat, useMiRAGChat } from "@/hooks/chat";
 import { v4 as uuidv4 } from "uuid";
 import type { Message } from "@/lib/types";
+import { ToggleMiragContext } from "@/routes";
 
 interface Conversation {
   id: string;
@@ -20,7 +21,11 @@ interface Conversation {
 }
 
 export function Chat({ className, ...props }: React.ComponentProps<"form">) {
+  // add url query {URL}?mirag-only=true
   const [conversations, setConversations] = useState<Conversation[]>([]);
+
+  // Get toggle-mirag from context
+  const { toggleMirag } = useContext(ToggleMiragContext);
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -365,26 +370,28 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                   </div>
                 </div>
 
-                {/* LongRAG Response */}
-                <div className="flex-1 rounded-xl bg-pink-100 p-4 text-sm">
-                  <div className="font-bold text-black">
-                    LongRAG{" "}
-                    <span className="text-sm font-thin">
+                {/* LongRAG Response (conditionally rendered) */}
+                {!toggleMirag && (
+                  <div className="flex-1 rounded-xl bg-pink-100 p-4 text-sm">
+                    <div className="font-bold text-black">
+                      LongRAG{" "}
+                      <span className="text-sm font-thin">
+                        {conversation.responses.find((r) => r.type === "longrag")
+                          ?.isStreaming && progress}
+                      </span>
+                    </div>
+                    <div className="prose">
+                      <ReactMarkdown>
+                        {
+                          conversation.responses.find((r) => r.type === "longrag")
+                            ?.content
+                        }
+                      </ReactMarkdown>
                       {conversation.responses.find((r) => r.type === "longrag")
-                        ?.isStreaming && progress}
-                    </span>
+                        ?.isStreaming && <span className="animate-pulse">▌</span>}
+                    </div>
                   </div>
-                  <div className="prose">
-                    <ReactMarkdown>
-                      {
-                        conversation.responses.find((r) => r.type === "longrag")
-                          ?.content
-                      }
-                    </ReactMarkdown>
-                    {conversation.responses.find((r) => r.type === "longrag")
-                      ?.isStreaming && <span className="animate-pulse">▌</span>}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           ))}

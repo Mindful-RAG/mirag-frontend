@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Brain, Info, MessageSquare, MessagesSquare } from "lucide-react";
+import { AlertTriangle, Info, MessageSquare, MessagesSquare } from "lucide-react";
 
 export function AppSidebar() {
   return (
@@ -42,36 +42,12 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link to="/mirag" >
-                    <Brain />
-                    <span>Mirag</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
                   <Link to="/about" >
                     <Info />
                     <span>About</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {/* <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href={`${import.meta.env.VITE_API_URL}/login`} >
-                    <Info />
-                    <span>Login</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href={`${import.meta.env.VITE_API_URL}/logout`} >
-                    <Info />
-                    <span>Logout</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem> */}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
