@@ -42,6 +42,14 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
+                  <Link to="/corpus" >
+                    <MessagesSquare />
+                    <span>Custom Corpus</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
                   <Link to="/about" >
                     <Info />
                     <span>About</span>

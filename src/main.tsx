@@ -20,6 +20,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import IndexPage from "./routes/index.tsx";
 import RootDocument from "./components/root-document.tsx";
 import AboutPage from "./routes/about.tsx";
+import CorpusPage from "./routes/corpus.tsx";
 
 const searchSchema = z.object({
   "toggle-mirag": z.boolean().optional(),
@@ -62,13 +63,18 @@ const indexRoute = createRoute({
   path: "/",
   component: IndexPage,
 });
+const corpusRoute = createRoute({
+  getParentRoute: () => Route,
+  path: "/corpus",
+  component: CorpusPage,
+});
 const aboutRoute = createRoute({
   getParentRoute: () => Route,
   path: "/about",
   component: AboutPage,
 });
 
-const routeTree = Route.addChildren([indexRoute, aboutRoute]);
+const routeTree = Route.addChildren([indexRoute, aboutRoute, corpusRoute]);
 
 const router = createRouter({
   routeTree,
