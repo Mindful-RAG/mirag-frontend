@@ -32,7 +32,8 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
 
   const [sessionId, setSessionId] = useState<string>("");
 
-  const [progress, setProgress] = useState("");
+  const [miragProgress, setMiragProgress] = useState("");
+  const [longragProgress, setLongragProgress] = useState("");
 
   const mirag = useMiRAGChat();
   const longrag = useLongRAGChat();
@@ -147,9 +148,8 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
               }
 
               try {
-                console.log("Line:", line);
                 const parsed = JSON.parse(line);
-                setProgress(parsed.progress);
+                setMiragProgress(parsed.progress);
 
                 accumContent += parsed.token || "";
 
@@ -258,8 +258,10 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                 break;
               }
 
+              // TODO: add dedicated progress state
               try {
                 const parsed = JSON.parse(line);
+                setLongragProgress(parsed.progress);
                 accumContent += parsed.token || "";
 
                 setConversations((prev) =>
@@ -355,7 +357,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                     MiRAG{" "}
                     <span className="text-sm font-thin">
                       {conversation.responses.find((r) => r.type === "mirag")
-                        ?.isStreaming && progress}
+                        ?.isStreaming && miragProgress}
                     </span>
                   </div>
                   <div className="prose">
@@ -377,7 +379,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                       LongRAG{" "}
                       <span className="text-sm font-thin">
                         {conversation.responses.find((r) => r.type === "longrag")
-                          ?.isStreaming && progress}
+                          ?.isStreaming && longragProgress}
                       </span>
                     </div>
                     <div className="prose">
