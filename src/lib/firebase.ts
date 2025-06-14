@@ -2,13 +2,13 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDrC6G0kx0P4_HKSb8Inbde0yVS2YfuFhM",
-  authDomain: "mindful-rag.firebaseapp.com",
-  projectId: "mindful-rag",
-  storageBucket: "mindful-rag.firebasestorage.app",
-  messagingSenderId: "495601596814",
-  appId: "1:495601596814:web:83be0a2f48fb62a9750cdf",
-  measurementId: "G-J7TSP49H03",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
