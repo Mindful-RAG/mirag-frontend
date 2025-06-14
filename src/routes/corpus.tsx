@@ -1,17 +1,22 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 
 import { useSearch, useRouter } from "@tanstack/react-router";
-import { useHealth } from "@/hooks/chat";
+import { useHealth, useUploadPDF } from "@/hooks/chat";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import StatusBadge from "@/components/status-badge";
 import { Chat } from "@/components/chat-form";
 import { ToggleMiragContext } from ".";
+import { MAX_FILE_SIZE_MB } from "@/lib/constants";
 
 
 const CorpusPage = () => {
   const { data: health } = useHealth();
+  const upload = useUploadPDF();
+
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const search = useSearch({ strict: false });
   const router = useRouter();
@@ -27,6 +32,29 @@ const CorpusPage = () => {
       search: isToggled(val),
       replace: true,
     })
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+
+    if (!selected) return;
+
+    if (selected.type !== 'application/pdf') {
+      setError('Only PDF files are allowed.');
+      return;
+    }
+
+    if (selected.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setError('File exceeds 10MB limit.');
+      return;
+    }
+
+    setError(null);
+    setFile(selected);
+  };
+
+  const handleUpload = () => {
+    if (file) upload.mutate(file);
   };
   return (
     <ToggleMiragContext.Provider value={{ toggleMirag, setToggleMirag }}>
@@ -53,6 +81,26 @@ const CorpusPage = () => {
         </div>
       </header>
       <Chat />
+      {/* file upload */}
+      <div className="p-4 space-y-4 max-w-md">
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileChange}
+        />
+        <button
+          onClick={handleUpload}
+          disabled={!file || upload.isPending}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          {upload.isPending ? 'Uploading...' : 'Upload PDF'}
+        </button>
+
+        {error && <p className="text-red-500">{error}</p>}
+        {upload.isSuccess && (
+          <p className="text-green-600">Uploaded: {upload.data.file}</p>
+        )}
+      </div>
     </ToggleMiragContext.Provider>
   );
 }
