@@ -42,28 +42,20 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
+                  <Link to="/corpus" >
+                    <MessagesSquare />
+                    <span>Custom Corpus</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
                   <Link to="/about" >
                     <Info />
                     <span>About</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {/* <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href={`${import.meta.env.VITE_API_URL}/login`} >
-                    <Info />
-                    <span>Login</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href={`${import.meta.env.VITE_API_URL}/logout`} >
-                    <Info />
-                    <span>Logout</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem> */}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

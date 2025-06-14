@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useState } from 'react';
+import { useAuthContext } from '../contexts/auth-context';
+import { LoginButton } from './auth/login-button';
+import { UserProfile } from './auth/user-profile';
 
 export default function Header() {
-  const [showBanner, setShowBanner] = useState(true)
+  const [showBanner, setShowBanner] = useState(true);
+  const { user, loading } = useAuthContext();
 
   return (
     <>
@@ -22,6 +26,25 @@ export default function Header() {
           </button>
         </div>
       )}
+
+      {/* Main Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-bold">MiRAG</h1>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {loading ? (
+              <div className="h-8 w-8 animate-pulse bg-muted rounded-full" />
+            ) : user ? (
+              <UserProfile />
+            ) : (
+              <LoginButton variant="outline" />
+            )}
+          </div>
+        </div>
+      </header>
     </>
-  )
+  );
 }
