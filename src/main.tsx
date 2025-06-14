@@ -10,8 +10,8 @@ import {
 } from "@tanstack/react-router";
 
 import TanstackQueryLayout from "./integrations/tanstack-query/layout";
-
 import * as TanstackQuery from "./integrations/tanstack-query/root-provider";
+import { AuthProvider } from "./contexts/auth-context";
 
 import "./styles.css";
 import reportWebVitals from "./reportWebVitals.ts";
@@ -25,6 +25,7 @@ import CorpusPage from "./routes/corpus.tsx";
 const searchSchema = z.object({
   "toggle-mirag": z.boolean().optional(),
 });
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -41,7 +42,6 @@ export const Route = createRootRoute({
     ],
   }),
   component: RootComponent,
-
   validateSearch: zodValidator(searchSchema),
   search: {
     middlewares: [retainSearchParams(true)],
@@ -52,7 +52,6 @@ function RootComponent() {
   return (
     <RootDocument>
       <Outlet />
-      {/* <TanStackRouterDevtools /> */}
       <TanstackQueryLayout />
     </RootDocument>
   );
@@ -63,11 +62,13 @@ const indexRoute = createRoute({
   path: "/",
   component: IndexPage,
 });
+
 const corpusRoute = createRoute({
   getParentRoute: () => Route,
   path: "/corpus",
   component: CorpusPage,
 });
+
 const aboutRoute = createRoute({
   getParentRoute: () => Route,
   path: "/about",
@@ -99,13 +100,12 @@ if (rootElement && !rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <TanstackQuery.Provider>
-        <RouterProvider router={router} />
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
       </TanstackQuery.Provider>
     </StrictMode>,
   );
 }
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
