@@ -8,11 +8,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ArrowUpIcon, Loader2 } from "lucide-react";
-import { useLongRAGChat, useMiRAGChat } from "@/hooks/chat";
+import { ArrowUpIcon, Loader2, Upload, X, FileText, AlertCircle } from "lucide-react";
+import { useLongRAGChat, useMiRAGChat, useUploadPDF, useDeleteCustomCorpus } from "@/hooks/chat";
 import { v4 as uuidv4 } from "uuid";
 import type { Message } from "@/lib/types";
 import { ToggleMiragContext } from "@/routes";
+import { useAuthContext } from "@/contexts/auth-context";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Conversation {
   id: string;
@@ -20,23 +22,35 @@ interface Conversation {
   responses: Message[];
 }
 
+interface CustomCorpus {
+  id: string;
+  filename: string;
+  uploadDate: Date;
+}
+
 export function Chat({ className, ...props }: React.ComponentProps<"form">) {
-  // add url query {URL}?mirag-only=true
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const { user } = useAuthContext();
 
   // Get toggle-mirag from context
   const { toggleMirag } = useContext(ToggleMiragContext);
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [sessionId, setSessionId] = useState<string>("");
+  const [customCorpus, setCustomCorpus] = useState<CustomCorpus | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [miragProgress, setMiragProgress] = useState("");
   const [longragProgress, setLongragProgress] = useState("");
 
   const mirag = useMiRAGChat();
   const longrag = useLongRAGChat();
+  const uploadPDF = useUploadPDF();
+  const deleteCorpus = useDeleteCustomCorpus();
 
   useEffect(() => {
     setSessionId(uuidv4());
@@ -53,7 +67,63 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     }
   };
 
-  const isLoading = mirag.isPending || longrag.isPending;
+  const isLoading = mirag.isPending || longrag.isPending || isUploading;
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      setUploadError("Please select a PDF file only.");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    uploadPDF.mutate(file, {
+      onSuccess: (data) => {
+        const newCorpus: CustomCorpus = {
+          id: data.corpus_id,
+          filename: data.file,
+          uploadDate: new Date(),
+        };
+        setCustomCorpus(newCorpus);
+        setIsUploading(false);
+        setUploadError(null);
+
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      },
+      onError: (error) => {
+        console.error("Upload failed:", error);
+        setUploadError(error.message);
+        setIsUploading(false);
+
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      },
+    });
+  };
+
+  const handleRemoveCorpus = () => {
+    if (!customCorpus) return;
+
+    deleteCorpus.mutate(customCorpus.id, {
+      onSuccess: () => {
+        setCustomCorpus(null);
+        setUploadError(null);
+      },
+      onError: (error) => {
+        console.error("Delete failed:", error);
+        setUploadError(`Failed to remove corpus: ${error.message}`);
+      },
+    });
+  };
 
   const header = (
     <header className="m-auto flex max-w-96 flex-col gap-5 text-center">
@@ -102,94 +172,20 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
     setInput("");
     inputRef.current?.focus();
 
+    // Prepare query parameters with optional custom corpus ID
+    const queryParams = {
+      query: userInput,
+      session_id: sessionId,
+      ...(customCorpus && { custom_corpus_id: customCorpus.id }),
+    };
+
     // Process MiRAG response
-    mirag.mutateAsync(
-      { query: userInput, session_id: sessionId },
-      {
-        onSuccess: async (res) => {
-          const reader = res.body?.getReader();
-          const decoder = new TextDecoder("utf-8");
+    mirag.mutateAsync(queryParams, {
+      onSuccess: async (res) => {
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder("utf-8");
 
-          if (!reader) {
-            setConversations((prev) =>
-              prev.map((conv) =>
-                conv.id === newConversationId
-                  ? {
-                    ...conv,
-                    responses: conv.responses.map((resp) =>
-                      resp.type === "mirag"
-                        ? {
-                          ...resp,
-                          content: "Error: No streaming data available",
-                          isStreaming: false,
-                        }
-                        : resp,
-                    ),
-                  }
-                  : conv,
-              ),
-            );
-            return;
-          }
-
-          let accumContent = "";
-          let isDone = false;
-
-          while (!isDone) {
-            const { value, done } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            for (const line of chunk.split("\n")) {
-              if (!line.trim()) continue;
-              if (line === "[DONE]") {
-                isDone = true;
-                break;
-              }
-
-              try {
-                const parsed = JSON.parse(line);
-                setMiragProgress(parsed.progress);
-
-                accumContent += parsed.token || "";
-
-                setConversations((prev) =>
-                  prev.map((conv) =>
-                    conv.id === newConversationId
-                      ? {
-                        ...conv,
-                        responses: conv.responses.map((resp) =>
-                          resp.type === "mirag"
-                            ? { ...resp, content: accumContent }
-                            : resp,
-                        ),
-                      }
-                      : conv,
-                  ),
-                );
-              } catch (e) {
-                console.error("Failed to parse streaming data:", e);
-              }
-            }
-          }
-
-          // Mark streaming as complete
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === newConversationId
-                ? {
-                  ...conv,
-                  responses: conv.responses.map((resp) =>
-                    resp.type === "mirag"
-                      ? { ...resp, isStreaming: false }
-                      : resp,
-                  ),
-                }
-                : conv,
-            ),
-          );
-        },
-        onError: () => {
+        if (!reader) {
           setConversations((prev) =>
             prev.map((conv) =>
               conv.id === newConversationId
@@ -199,8 +195,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                     resp.type === "mirag"
                       ? {
                         ...resp,
-                        content:
-                          "Error: No response received. Please try again.",
+                        content: "Error: No streaming data available",
                         isStreaming: false,
                       }
                       : resp,
@@ -209,98 +204,96 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                 : conv,
             ),
           );
-        },
+          return;
+        }
+
+        let accumContent = "";
+        let isDone = false;
+
+        while (!isDone) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          for (const line of chunk.split("\n")) {
+            if (!line.trim()) continue;
+            if (line === "[DONE]") {
+              isDone = true;
+              break;
+            }
+
+            try {
+              const parsed = JSON.parse(line);
+              setMiragProgress(parsed.progress);
+
+              accumContent += parsed.token || "";
+
+              setConversations((prev) =>
+                prev.map((conv) =>
+                  conv.id === newConversationId
+                    ? {
+                      ...conv,
+                      responses: conv.responses.map((resp) =>
+                        resp.type === "mirag"
+                          ? { ...resp, content: accumContent }
+                          : resp,
+                      ),
+                    }
+                    : conv,
+                ),
+              );
+            } catch (e) {
+              console.error("Failed to parse streaming data:", e);
+            }
+          }
+        }
+
+        // Mark streaming as complete
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === newConversationId
+              ? {
+                ...conv,
+                responses: conv.responses.map((resp) =>
+                  resp.type === "mirag"
+                    ? { ...resp, isStreaming: false }
+                    : resp,
+                ),
+              }
+              : conv,
+          ),
+        );
       },
-    );
+      onError: () => {
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === newConversationId
+              ? {
+                ...conv,
+                responses: conv.responses.map((resp) =>
+                  resp.type === "mirag"
+                    ? {
+                      ...resp,
+                      content:
+                        "Error: No response received. Please try again.",
+                      isStreaming: false,
+                    }
+                    : resp,
+                ),
+              }
+              : conv,
+          ),
+        );
+      },
+    });
 
     // Process LongRAG streaming response
-    longrag.mutateAsync(
-      { query: userInput, session_id: sessionId },
-      {
-        onSuccess: async (res) => {
-          const reader = res.body?.getReader();
-          const decoder = new TextDecoder("utf-8");
+    longrag.mutateAsync(queryParams, {
+      onSuccess: async (res) => {
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder("utf-8");
 
-          if (!reader) {
-            setConversations((prev) =>
-              prev.map((conv) =>
-                conv.id === newConversationId
-                  ? {
-                    ...conv,
-                    responses: conv.responses.map((resp) =>
-                      resp.type === "longrag"
-                        ? {
-                          ...resp,
-                          content: "Error: No streaming data available",
-                          isStreaming: false,
-                        }
-                        : resp,
-                    ),
-                  }
-                  : conv,
-              ),
-            );
-            return;
-          }
-
-          let accumContent = "";
-          let isDone = false;
-
-          while (!isDone) {
-            const { value, done } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            for (const line of chunk.split("\n")) {
-              if (!line.trim()) continue;
-              if (line === "[DONE]") {
-                isDone = true;
-                break;
-              }
-
-              // TODO: add dedicated progress state
-              try {
-                const parsed = JSON.parse(line);
-                setLongragProgress(parsed.progress);
-                accumContent += parsed.token || "";
-
-                setConversations((prev) =>
-                  prev.map((conv) =>
-                    conv.id === newConversationId
-                      ? {
-                        ...conv,
-                        responses: conv.responses.map((resp) =>
-                          resp.type === "longrag"
-                            ? { ...resp, content: accumContent }
-                            : resp,
-                        ),
-                      }
-                      : conv,
-                  ),
-                );
-              } catch (e) {
-                console.error("Failed to parse streaming data:", e);
-              }
-            }
-          }
-
-          // Mark streaming as complete
-          setConversations((prev) =>
-            prev.map((conv) =>
-              conv.id === newConversationId
-                ? {
-                  ...conv,
-                  responses: conv.responses.map((resp) =>
-                    resp.type === "longrag"
-                      ? { ...resp, isStreaming: false }
-                      : resp,
-                  ),
-                }
-                : conv,
-            ),
-          );
-        },
-        onError: () => {
+        if (!reader) {
           setConversations((prev) =>
             prev.map((conv) =>
               conv.id === newConversationId
@@ -310,8 +303,7 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                     resp.type === "longrag"
                       ? {
                         ...resp,
-                        content:
-                          "Error: No response received. Please try again.",
+                        content: "Error: No streaming data available",
                         isStreaming: false,
                       }
                       : resp,
@@ -320,9 +312,87 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
                 : conv,
             ),
           );
-        },
+          return;
+        }
+
+        let accumContent = "";
+        let isDone = false;
+
+        while (!isDone) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          for (const line of chunk.split("\n")) {
+            if (!line.trim()) continue;
+            if (line === "[DONE]") {
+              isDone = true;
+              break;
+            }
+
+            try {
+              const parsed = JSON.parse(line);
+              setLongragProgress(parsed.progress);
+              accumContent += parsed.token || "";
+
+              setConversations((prev) =>
+                prev.map((conv) =>
+                  conv.id === newConversationId
+                    ? {
+                      ...conv,
+                      responses: conv.responses.map((resp) =>
+                        resp.type === "longrag"
+                          ? { ...resp, content: accumContent }
+                          : resp,
+                      ),
+                    }
+                    : conv,
+                ),
+              );
+            } catch (e) {
+              console.error("Failed to parse streaming data:", e);
+            }
+          }
+        }
+
+        // Mark streaming as complete
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === newConversationId
+              ? {
+                ...conv,
+                responses: conv.responses.map((resp) =>
+                  resp.type === "longrag"
+                    ? { ...resp, isStreaming: false }
+                    : resp,
+                ),
+              }
+              : conv,
+          ),
+        );
       },
-    );
+      onError: () => {
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.id === newConversationId
+              ? {
+                ...conv,
+                responses: conv.responses.map((resp) =>
+                  resp.type === "longrag"
+                    ? {
+                      ...resp,
+                      content:
+                        "Error: No response received. Please try again.",
+                      isStreaming: false,
+                    }
+                    : resp,
+                ),
+              }
+              : conv,
+          ),
+        );
+      },
+    });
   };
 
   return (
@@ -333,6 +403,108 @@ export function Chat({ className, ...props }: React.ComponentProps<"form">) {
       )}
       {...props}
     >
+      {/* Corpus Management Bar */}
+      <div className="border-b bg-gray-50 p-4">
+        <div className="mx-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">
+              Using: {customCorpus ? (
+                <span className="text-blue-700 font-semibold">{customCorpus.filename} (Custom)</span>
+              ) : (
+                <span className="text-gray-700">Default Corpus</span>
+              )}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {user ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                {customCorpus ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading || deleteCorpus.isPending}
+                      className="flex items-center gap-2"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      Replace PDF
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleRemoveCorpus}
+                      disabled={isUploading || deleteCorpus.isPending}
+                      className="flex items-center gap-2"
+                    >
+                      {deleteCorpus.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                      Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="flex items-center gap-2"
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    {isUploading ? "Uploading..." : "Upload Custom PDF"}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <div className="text-sm text-gray-500">
+                Sign in to upload custom documents
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Error Display */}
+        {uploadError && (
+          <div className="mx-6 mt-3">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{uploadError}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {/* Custom Corpus Display */}
+        {customCorpus && (
+          <div className="mx-6 mt-3">
+            <div className="flex items-center gap-2 rounded-full border border-blue-300 bg-blue-100 px-3 py-1 text-xs text-blue-700">
+              <FileText className="h-3 w-3" />
+              <span>{customCorpus.filename}</span>
+              <span className="text-blue-500">• Uploaded {customCorpus.uploadDate.toLocaleDateString()}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {conversations.length === 0 ? (
         <div className="flex-1 content-center overflow-y-auto px-6">
           {header}

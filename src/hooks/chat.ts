@@ -34,16 +34,18 @@ export const useMiRAGChat = () => {
     mutationFn: async ({
       query,
       session_id,
+      custom_corpus_id,
     }: {
       query: string;
       session_id: string;
+      custom_corpus_id?: string;
     }) => {
       const response = await fetch(`${API_URL}/chat/mirag`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query, session_id }),
+        body: JSON.stringify({ query, session_id, custom_corpus_id }),
         credentials: "include", // Important for auth cookies
       });
       if (!response.ok) {
@@ -59,9 +61,11 @@ export const useLongRAGChat = () => {
     mutationFn: async ({
       query,
       session_id,
+      custom_corpus_id,
     }: {
       query: string;
       session_id: string;
+      custom_corpus_id?: string;
     }) => {
       const response = await fetch(`${API_URL}/chat/longrag`, {
         method: "POST",
@@ -71,6 +75,7 @@ export const useLongRAGChat = () => {
         body: JSON.stringify({
           query,
           session_id,
+          custom_corpus_id,
         }),
         credentials: "include", // Important for auth cookies
       });
@@ -97,7 +102,26 @@ export const useUploadPDF = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to upload PDF");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to upload PDF");
+      }
+
+      return response.json();
+    },
+  });
+};
+
+export const useDeleteCustomCorpus = () => {
+  return useMutation({
+    mutationFn: async (corpusId: string) => {
+      const response = await fetch(`${API_URL}/chat/upload/${corpusId}`, {
+        method: "DELETE",
+        credentials: "include", // Important for auth cookies
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to delete custom corpus");
       }
 
       return response.json();
