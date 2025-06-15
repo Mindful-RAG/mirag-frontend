@@ -5,10 +5,10 @@ import { AlertTriangle, Info, MessageSquare, MessagesSquare } from "lucide-react
 export function AppSidebar() {
   return (
     <Sidebar >
-      <SidebarHeader className="border-b p-4 ">
-        <div className="flex items-center gap-x-2">
-          <MessageSquare className="h-6 w-6" />
-          <Link to="/" className="text-xl font-bold">Mindful RAG</Link>
+      <SidebarHeader className="border-b p-4">
+        <div className="flex items-center gap-x-4">
+          <MessageSquare className="h-5 w-5" />
+          <Link to="/" className="text-xl font-bold py-0.5">Mindful RAG</Link>
         </div>
       </SidebarHeader>
       <SidebarContent>
