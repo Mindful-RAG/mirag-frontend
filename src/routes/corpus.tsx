@@ -1,14 +1,14 @@
-import { createContext, useContext, useState } from "react";
+import { useState } from "react";
 
-import { useSearch, useRouter } from "@tanstack/react-router";
-import { useHealth, useUploadPDF } from "@/hooks/chat";
+import { Chat } from "@/components/chat-form";
+import StatusBadge from "@/components/status-badge";
+import { Label } from "@/components/ui/label";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import StatusBadge from "@/components/status-badge";
-import { Chat } from "@/components/chat-form";
-import { ToggleMiragContext } from ".";
+import { useHealth, useUploadPDF } from "@/hooks/chat";
 import { MAX_FILE_SIZE_MB } from "@/lib/constants";
+import { useRouter, useSearch } from "@tanstack/react-router";
+import { ToggleMiragContext } from ".";
 
 
 const CorpusPage = () => {
