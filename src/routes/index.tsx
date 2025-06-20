@@ -101,7 +101,7 @@ const IndexPage = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-blue-700">
-                You're browsing as a guest. <strong>Sign in with Google</strong> to save your chat history and access advanced features.
+                You're browsing as a guest. <strong>Sign in with Google</strong> to use custom corpus.
               </p>
             </div>
           </div>
