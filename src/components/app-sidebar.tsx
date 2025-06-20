@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail } from "@/components/ui/sidebar";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Info, MessageSquare, MessagesSquare } from "lucide-react";
+import { Info, MessageSquare, MessagesSquare } from "lucide-react";
 
 export function AppSidebar() {
   return (
@@ -12,7 +12,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
+        {/* <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -25,7 +25,7 @@ export function AppSidebar() {
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
+        </SidebarGroup> */}
         <SidebarGroup>
           <SidebarGroupLabel>
             Info
@@ -37,14 +37,6 @@ export function AppSidebar() {
                   <Link to="/" >
                     <MessagesSquare />
                     <span>Chat</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link to="/corpus" >
-                    <MessagesSquare />
-                    <span>Custom Corpus</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
